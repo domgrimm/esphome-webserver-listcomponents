@@ -82,6 +82,7 @@ namespace esphome {
 namespace webserver_listcomponents {
 
 static const char *const TAG = "webserver_listcomponents";
+static const char *const VER = "lc-endpoint v0.2.0";
 
 // JSON-building iterator over all components
 class ListComponentsJsonIterator : public esphome::ComponentIterator {
@@ -236,7 +237,14 @@ float WebServerListComponents::get_setup_priority() const {
 }
 
 void WebServerListComponents::setup() {
-  ESP_LOGI(TAG, "Registering /components endpoint");
+  ESP_LOGI(TAG, "Registering /components endpoint (%s)", VER);
+#if defined(WEBSERVER_HAS_ARDUINO)
+  ESP_LOGI(TAG, "Backend: Arduino");
+#elif defined(WEBSERVER_HAS_IDF)
+  ESP_LOGI(TAG, "Backend: IDF");
+#else
+  ESP_LOGI(TAG, "Backend: unknown");
+#endif
   auto *ws = esphome::web_server_base::global_web_server_base;
   if (!ws) {
     ESP_LOGE(TAG, "Web server not available; cannot register /components");
