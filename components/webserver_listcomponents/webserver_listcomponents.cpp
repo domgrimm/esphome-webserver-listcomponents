@@ -3,7 +3,11 @@
 #include "esphome/core/application.h"
 #include "esphome/core/component_iterator.h"
 #include "esphome/components/web_server_base/web_server_base.h"
+#ifdef USE_WEB_SERVER_IDF
 #include "esphome/components/web_server_idf/web_server_idf.h"
+#elif defined(USE_WEB_SERVER)
+#include "esphome/components/web_server/web_server.h"
+#endif
 #include <ArduinoJson.h>
 
 // Per-entity includes guarded by USE_* like ESPHome does
@@ -161,8 +165,9 @@ class ListComponentsJsonIterator : public esphome::ComponentIterator {
   ArduinoJson::JsonArray &out_;
 };
 
-// ESP-IDF web server handler (snake_case virtuals; note const on is_request_handler)
-class ListComponentsHandler : public esphome::web_server_idf::AsyncWebHandler {
+#ifdef USE_WEB_SERVER_IDF
+// ESP-IDF web server handler
+class ListComponentsHandlerIDF : public esphome::web_server_idf::AsyncWebHandler {
  public:
   bool canHandle(esphome::web_server_idf::AsyncWebServerRequest *request) const override {
     const auto url = request->url();
@@ -190,6 +195,37 @@ class ListComponentsHandler : public esphome::web_server_idf::AsyncWebHandler {
     request->send(200, "application/json", json.c_str());
   }
 };
+#elif defined(USE_WEB_SERVER)
+// Arduino (ESPAsyncWebServer) handler
+class ListComponentsHandlerArduino : public AsyncWebHandler {
+ public:
+  bool canHandle(AsyncWebServerRequest *request) override {
+    const auto url = request->url();
+    const bool match = (url == "/components" || url == "/components/");
+    ESP_LOGD(TAG, "can_handle url=%s match=%d", url.c_str(), match);
+    return match;
+  }
+
+  void handleRequest(AsyncWebServerRequest *request) override {
+    ESP_LOGD(TAG, "handle_request /components");
+
+    ArduinoJson::JsonDocument doc;  // ArduinoJson v8
+    auto root = doc.to<ArduinoJson::JsonObject>();
+    auto arr = root["components"].to<ArduinoJson::JsonArray>();
+
+    // Iterate all known components
+    ListComponentsJsonIterator it(arr);
+    it.begin();
+    while (it.get_state() != ListComponentsJsonIterator::State::NONE) {
+      it.advance();
+    }
+
+    String json;
+    ArduinoJson::serializeJson(doc, json);
+    request->send(200, "application/json", json);
+  }
+};
+#endif
 
 float WebServerListComponents::get_setup_priority() const {
   // After WiFi; server attaches handlers when ready.
@@ -197,14 +233,22 @@ float WebServerListComponents::get_setup_priority() const {
 }
 
 void WebServerListComponents::setup() {
-  ESP_LOGI(TAG, "Registering /components endpoint (ESP-IDF)");
+  ESP_LOGI(TAG, "Registering /components endpoint");
   auto *ws = esphome::web_server_base::global_web_server_base;
   if (!ws) {
     ESP_LOGE(TAG, "Web server not available; cannot register /components");
     return;
   }
-  ws->add_handler(new ListComponentsHandler());
-  ESP_LOGI(TAG, "Registered /components endpoint");
+  
+#ifdef USE_WEB_SERVER_IDF
+  ws->add_handler(new ListComponentsHandlerIDF());
+  ESP_LOGI(TAG, "Registered /components endpoint (IDF)");
+#elif defined(USE_WEB_SERVER)
+  ws->add_handler(new ListComponentsHandlerArduino());
+  ESP_LOGI(TAG, "Registered /components endpoint (Arduino)");
+#else
+  ESP_LOGW(TAG, "No supported web server backend detected; endpoint not registered");
+#endif
 }
 
 void WebServerListComponents::dump_config() { ESP_LOGI(TAG, "Component loaded. Route: /components"); }
