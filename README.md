@@ -1,4 +1,4 @@
-# ESPHome Web Server API List Components
+# ESPHome Web Server API List Components (Arduino framework compatible)
 
 An ESPHome external component that adds an alternative to SSE discovery through a `/components` HTTP endpoint to your device's web server, providing a JSON API to list all components and their metadata, sample code for further expansion and publishing of entity data to HTTP endpoints.
 
@@ -16,7 +16,7 @@ This component extends the built-in ESPHome web server by adding a new endpoint 
 - 🌐 Adds `/components` GET endpoint to existing ESPHome web server
 - 📊 Returns comprehensive entity metadata (key, object_id, name, type)
 - 🔧 Supports all major ESPHome entity types
-- ⚡ ESP-IDF compatible
+- ⚡ ESP-IDF and Arduino framework compatible
 - 📱 JSON response format for easy integration
 - 🛡️ Leverages existing web server security and configuration
 
@@ -40,10 +40,8 @@ Add this component to your ESPHome configuration as an external component:
 
 ```yaml
 external_components:
-  - source:
-      type: git
-      url: https://github.com/andrewbackway/esphome-webserver-listcomponents
-      components: ["webserver_listcomponents"]
+  - source: github://domgrimm/esphome-webserver-listcomponents
+    components: ["webserver_listcomponents"]
 
 # Enable the built-in web server (required)
 web_server:
@@ -209,9 +207,9 @@ binary_sensor:
 ### Dependencies
 
 This component relies on:
-- `esphome/components/web_server` - For the HTTP server infrastructure
-- `AsyncWebServer` - For HTTP request handling
-- `ArduinoJson` - For JSON serialization
+- `web_server` (YAML) – the standard ESPHome web server (build selects IDF or Arduino backend automatically)
+- `web_server_base` – core abstractions (auto-loaded)
+- `ArduinoJson` – for JSON serialization
 
 ### Logging
 
