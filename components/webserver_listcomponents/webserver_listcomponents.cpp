@@ -201,7 +201,7 @@ class ListComponentsHandlerIDF : public esphome::web_server_idf::AsyncWebHandler
 };
 #elif defined(WEBSERVER_HAS_ARDUINO)
 // Arduino (ESPAsyncWebServer) handler
-class ListComponentsHandlerArduino : public AsyncWebHandler {
+class ListComponentsHandlerArduino : public esphome::web_server::AsyncWebHandler {
  public:
   bool canHandle(AsyncWebServerRequest *request) override {
     const auto url = request->url();
