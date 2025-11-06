@@ -3,10 +3,16 @@
 #include "esphome/core/application.h"
 #include "esphome/core/component_iterator.h"
 #include "esphome/components/web_server_base/web_server_base.h"
-#ifdef USE_WEB_SERVER_IDF
+
+// Prefer feature-detection over config macros so external components work across variants
+#if __has_include("esphome/components/web_server_idf/web_server_idf.h")
 #include "esphome/components/web_server_idf/web_server_idf.h"
-#elif defined(USE_WEB_SERVER)
+#define WEBSERVER_HAS_IDF 1
+#endif
+
+#if __has_include("esphome/components/web_server/web_server.h")
 #include "esphome/components/web_server/web_server.h"
+#define WEBSERVER_HAS_ARDUINO 1
 #endif
 #include <ArduinoJson.h>
 
@@ -165,7 +171,7 @@ class ListComponentsJsonIterator : public esphome::ComponentIterator {
   ArduinoJson::JsonArray &out_;
 };
 
-#ifdef USE_WEB_SERVER_IDF
+#ifdef WEBSERVER_HAS_IDF
 // ESP-IDF web server handler
 class ListComponentsHandlerIDF : public esphome::web_server_idf::AsyncWebHandler {
  public:
@@ -195,7 +201,7 @@ class ListComponentsHandlerIDF : public esphome::web_server_idf::AsyncWebHandler
     request->send(200, "application/json", json.c_str());
   }
 };
-#elif defined(USE_WEB_SERVER)
+#elif defined(WEBSERVER_HAS_ARDUINO)
 // Arduino (ESPAsyncWebServer) handler
 class ListComponentsHandlerArduino : public AsyncWebHandler {
  public:
@@ -239,16 +245,24 @@ void WebServerListComponents::setup() {
     ESP_LOGE(TAG, "Web server not available; cannot register /components");
     return;
   }
-  
-#ifdef USE_WEB_SERVER_IDF
-  ws->add_handler(new ListComponentsHandlerIDF());
-  ESP_LOGI(TAG, "Registered /components endpoint (IDF)");
-#elif defined(USE_WEB_SERVER)
-  ws->add_handler(new ListComponentsHandlerArduino());
-  ESP_LOGI(TAG, "Registered /components endpoint (Arduino)");
-#else
-  ESP_LOGW(TAG, "No supported web server backend detected; endpoint not registered");
+
+#if defined(WEBSERVER_HAS_IDF)
+  if (esphome::web_server_idf::global_web_server_idf != nullptr) {
+    ws->add_handler(new ListComponentsHandlerIDF());
+    ESP_LOGI(TAG, "Registered /components endpoint (IDF)");
+    return;
+  }
 #endif
+
+#if defined(WEBSERVER_HAS_ARDUINO)
+  if (esphome::web_server::global_web_server != nullptr) {
+    ws->add_handler(new ListComponentsHandlerArduino());
+    ESP_LOGI(TAG, "Registered /components endpoint (Arduino)");
+    return;
+  }
+#endif
+
+  ESP_LOGW(TAG, "No supported web server backend detected at runtime; endpoint not registered");
 }
 
 void WebServerListComponents::dump_config() { ESP_LOGI(TAG, "Component loaded. Route: /components"); }
