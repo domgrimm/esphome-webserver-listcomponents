@@ -205,14 +205,14 @@ class ListComponentsHandlerIDF : public esphome::web_server_idf::AsyncWebHandler
 // Arduino (ESPAsyncWebServer) handler using library's AsyncWebHandler
 class ListComponentsHandlerArduino : public AsyncWebHandler {
  public:
-  bool canHandle(AsyncWebServerRequest *request) override {
+  bool canHandle(AsyncWebServerRequest *request) {
     const auto url = request->url();
     const bool match = (url == "/components" || url == "/components/");
     ESP_LOGD(TAG, "can_handle url=%s match=%d", url.c_str(), match);
     return match;
   }
 
-  void handleRequest(AsyncWebServerRequest *request) override {
+  void handleRequest(AsyncWebServerRequest *request) {
     ESP_LOGD(TAG, "handle_request /components (Arduino)");
 
     ArduinoJson::JsonDocument doc;  // ArduinoJson v8
@@ -229,6 +229,7 @@ class ListComponentsHandlerArduino : public AsyncWebHandler {
     ArduinoJson::serializeJson(doc, json);
     request->send(200, "application/json", json);
   }
+  bool isRequestHandlerTrivial() { return false; }
 };
 #endif
 
