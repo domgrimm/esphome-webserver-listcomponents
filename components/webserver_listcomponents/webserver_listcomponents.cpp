@@ -4,15 +4,12 @@
 #include "esphome/core/component_iterator.h"
 #include "esphome/components/web_server_base/web_server_base.h"
 
-// Prefer feature-detection over config macros so external components work across variants
-#if __has_include("esphome/components/web_server_idf/web_server_idf.h")
-#include "esphome/components/web_server_idf/web_server_idf.h"
-#define WEBSERVER_HAS_IDF 1
-#endif
-
-#if __has_include("esphome/components/web_server/web_server.h")
+#ifdef ARDUINO
 #include "esphome/components/web_server/web_server.h"
 #define WEBSERVER_HAS_ARDUINO 1
+#else
+#include "esphome/components/web_server_idf/web_server_idf.h"
+#define WEBSERVER_HAS_IDF 1
 #endif
 #include <ArduinoJson.h>
 
