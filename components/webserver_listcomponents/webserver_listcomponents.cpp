@@ -201,36 +201,6 @@ class ListComponentsHandlerIDF : public esphome::web_server_idf::AsyncWebHandler
     request->send(200, "application/json", json.c_str());
   }
 };
-#elif defined(WEBSERVER_HAS_ARDUINO)
-// Arduino (ESPAsyncWebServer) handler using library's AsyncWebHandler
-class ListComponentsHandlerArduino : public AsyncWebHandler {
- public:
-  bool canHandle(AsyncWebServerRequest *request) {
-    const auto url = request->url();
-    const bool match = (url == "/components" || url == "/components/");
-    ESP_LOGD(TAG, "can_handle url=%s match=%d", url.c_str(), match);
-    return match;
-  }
-
-  void handleRequest(AsyncWebServerRequest *request) {
-    ESP_LOGD(TAG, "handle_request /components (Arduino)");
-
-    ArduinoJson::JsonDocument doc;  // ArduinoJson v8
-    auto root = doc.to<ArduinoJson::JsonObject>();
-    auto arr = root["components"].to<ArduinoJson::JsonArray>();
-
-    ListComponentsJsonIterator it(arr);
-    it.begin();
-    while (it.get_state() != ListComponentsJsonIterator::State::NONE) {
-      it.advance();
-    }
-
-    String json;
-    ArduinoJson::serializeJson(doc, json);
-    request->send(200, "application/json", json);
-  }
-  bool isRequestHandlerTrivial() { return false; }
-};
 #endif
 
 float WebServerListComponents::get_setup_priority() const {
@@ -257,8 +227,27 @@ void WebServerListComponents::setup() {
   ws->add_handler(new ListComponentsHandlerIDF());
   ESP_LOGI(TAG, "Registered /components endpoint (IDF)");
 #elif defined(WEBSERVER_HAS_ARDUINO)
-  ws->add_handler(new ListComponentsHandlerArduino());
-  ESP_LOGI(TAG, "Registered /components endpoint (Arduino)");
+  {
+    auto *handler = new AsyncCallbackWebHandler();
+    handler->setUri("/components");
+    handler->setMethod(HTTP_GET);
+    handler->onRequest([](AsyncWebServerRequest *request) {
+      ESP_LOGD(TAG, "handle_request /components (Arduino)");
+      ArduinoJson::JsonDocument doc;  // ArduinoJson v8
+      auto root = doc.to<ArduinoJson::JsonObject>();
+      auto arr = root["components"].to<ArduinoJson::JsonArray>();
+      ListComponentsJsonIterator it(arr);
+      it.begin();
+      while (it.get_state() != ListComponentsJsonIterator::State::NONE) {
+        it.advance();
+      }
+      String json;
+      ArduinoJson::serializeJson(doc, json);
+      request->send(200, "application/json", json);
+    });
+    ws->add_handler(handler);
+    ESP_LOGI(TAG, "Registered /components endpoint (Arduino)");
+  }
 #else
   ESP_LOGW(TAG, "No supported web server backend headers found; endpoint not registered");
 #endif
