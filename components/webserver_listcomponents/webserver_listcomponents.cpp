@@ -79,12 +79,21 @@
 #ifdef USE_TEXT
 #include "esphome/components/text/text.h"
 #endif
+#ifdef USE_SPEAKER
+#include "esphome/components/speaker/speaker.h"
+#endif
+#ifdef USE_MICRO_WAKE_WORD
+#include "esphome/components/micro_wake_word/micro_wake_word.h"
+#endif
+#ifdef USE_CAMERA
+#include "esphome/components/camera/camera.h"
+#endif
 
 namespace esphome {
 namespace webserver_listcomponents {
 
 static const char *const TAG = "webserver_listcomponents";
-static const char *const VER = "lc-endpoint v0.2.0";
+static const char *const VER = "lc-endpoint v0.3.0";
 
 // JSON-building iterator over all components
 class ListComponentsJsonIterator : public esphome::ComponentIterator {
@@ -156,6 +165,15 @@ class ListComponentsJsonIterator : public esphome::ComponentIterator {
 #ifdef USE_TEXT
   bool on_text(text::Text *e) override { add_(e, "text"); return true; }
 #endif
+#ifdef USE_SPEAKER
+  bool on_speaker(speaker::Speaker *e) override { add_(e, "speaker"); return true; }
+#endif
+#ifdef USE_MICRO_WAKE_WORD
+  bool on_micro_wake_word(micro_wake_word::MicroWakeWord *e) override { add_(e, "micro_wake_word"); return true; }
+#endif
+#ifdef USE_CAMERA
+  bool on_camera(camera::Camera *e) override { add_(e, "camera"); return true; }
+#endif
 
   bool on_end() override { return true; }
 
@@ -166,6 +184,9 @@ class ListComponentsJsonIterator : public esphome::ComponentIterator {
     obj["type"] = type;
     obj["object_id"] = entity->get_object_id();
     obj["name"] = entity->get_name();
+    // ESPHome 2026.4: Add id (legacy) and name_id (new slash-based)
+    obj["id"] = std::string(type) + "-" + entity->get_object_id();
+    obj["name_id"] = std::string(type) + "/" + entity->get_object_id();
   }
 
   ArduinoJson::JsonArray &out_;
