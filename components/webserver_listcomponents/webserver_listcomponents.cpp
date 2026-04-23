@@ -7,12 +7,12 @@
 #ifdef ARDUINO
 #include "esphome/components/web_server/web_server.h"
 #define WEBSERVER_HAS_ARDUINO 1
-// Ensure AsyncWebHandler is visible
 #include <ESPAsyncWebServer.h>
 #else
 #include "esphome/components/web_server_idf/web_server_idf.h"
 #define WEBSERVER_HAS_IDF 1
 #endif
+
 #include <ArduinoJson.h>
 
 // Per-entity includes guarded by USE_* like ESPHome does
@@ -79,8 +79,6 @@
 #ifdef USE_TEXT
 #include "esphome/components/text/text.h"
 #endif
-// Removed: USE_SPEAKER
-
 #ifdef USE_MICRO_WAKE_WORD
 #include "esphome/components/micro_wake_word/micro_wake_word.h"
 #endif
@@ -94,12 +92,11 @@ namespace webserver_listcomponents {
 static const char *const TAG = "webserver_listcomponents";
 static const char *const VER = "lc-endpoint v0.3.1";
 
-// JSON-building iterator over all components
 class ListComponentsJsonIterator : public esphome::ComponentIterator {
  public:
   using State = ComponentIterator::IteratorState;
-  State get_state() const { return this->state_; }
   explicit ListComponentsJsonIterator(ArduinoJson::JsonArray &out) : out_(out) {}
+  State get_state() const { return this->state_; }
 
 #ifdef USE_SENSOR
   bool on_sensor(sensor::Sensor *e) override { add_(e, "sensor"); return true; }
@@ -144,7 +141,10 @@ class ListComponentsJsonIterator : public esphome::ComponentIterator {
   bool on_media_player(media_player::MediaPlayer *e) override { add_(e, "media_player"); return true; }
 #endif
 #ifdef USE_ALARM_CONTROL_PANEL
-  bool on_alarm_control_panel(alarm_control_panel::AlarmControlPanel *e) override { add_(e, "alarm_control_panel"); return true; }
+  bool on_alarm_control_panel(alarm_control_panel::AlarmControlPanel *e) override {
+    add_(e, "alarm_control_panel");
+    return true;
+  }
 #endif
 #ifdef USE_EVENT
   bool on_event(event::Event *e) override { add_(e, "event"); return true; }
@@ -164,9 +164,11 @@ class ListComponentsJsonIterator : public esphome::ComponentIterator {
 #ifdef USE_TEXT
   bool on_text(text::Text *e) override { add_(e, "text"); return true; }
 #endif
-// Removed: on_speaker
 #ifdef USE_MICRO_WAKE_WORD
-  bool on_micro_wake_word(micro_wake_word::MicroWakeWord *e) override { add_(e, "micro_wake_word"); return true; }
+  bool on_micro_wake_word(micro_wake_word::MicroWakeWord *e) override {
+    add_(e, "micro_wake_word");
+    return true;
+  }
 #endif
 #ifdef USE_CAMERA
   bool on_camera(camera::Camera *e) override { add_(e, "camera"); return true; }
@@ -175,16 +177,15 @@ class ListComponentsJsonIterator : public esphome::ComponentIterator {
   bool on_end() override { return true; }
 
  private:
-  template <typename T>
-  void add_(T *entity, const char *type) {
+  template<typename T> void add_(T *entity, const char *type) {
     auto obj = out_.add<ArduinoJson::JsonObject>();
     obj["type"] = type;
-    
+
     char object_id_buf[OBJECT_ID_MAX_LEN];
     StringRef object_id = entity->get_object_id_to(object_id_buf);
-    
+
     obj["object_id"] = object_id.c_str();
-    obj["name"] = entity->get_name();
+    obj["name"] = entity->get_name().c_str();
     obj["id"] = std::string(type) + "-" + object_id.c_str();
     obj["name_id"] = std::string(type) + "/" + object_id.c_str();
   }
@@ -193,12 +194,11 @@ class ListComponentsJsonIterator : public esphome::ComponentIterator {
 };
 
 #ifdef WEBSERVER_HAS_IDF
-// ESP-IDF web server handler
 class ListComponentsHandlerIDF : public esphome::web_server_idf::AsyncWebHandler {
  public:
   bool canHandle(esphome::web_server_idf::AsyncWebServerRequest *request) const override {
-    char url_buf[URL_BUF_SIZE];
-    const auto url = request->url_to(url_buf);
+    char url_buf[esphome::web_server_idf::AsyncWebServerRequest::URL_BUF_SIZE];
+    StringRef url = request->url_to(url_buf);
     const bool match = (url == "/components" || url == "/components/");
     ESP_LOGD(TAG, "can_handle url=%s match=%d", url.c_str(), match);
     return match;
@@ -207,11 +207,10 @@ class ListComponentsHandlerIDF : public esphome::web_server_idf::AsyncWebHandler
   void handleRequest(esphome::web_server_idf::AsyncWebServerRequest *request) override {
     ESP_LOGD(TAG, "handle_request /components");
 
-    ArduinoJson::JsonDocument doc;  // ArduinoJson v8
+    ArduinoJson::JsonDocument doc;
     auto root = doc.to<ArduinoJson::JsonObject>();
     auto arr = root["components"].to<ArduinoJson::JsonArray>();
 
-    // Iterate all known components
     ListComponentsJsonIterator it(arr);
     it.begin();
     while (it.get_state() != ListComponentsJsonIterator::State::NONE) {
@@ -226,12 +225,12 @@ class ListComponentsHandlerIDF : public esphome::web_server_idf::AsyncWebHandler
 #endif
 
 float WebServerListComponents::get_setup_priority() const {
-  // After WiFi; server attaches handlers when ready.
   return setup_priority::AFTER_WIFI;
 }
 
 void WebServerListComponents::setup() {
   ESP_LOGI(TAG, "Registering /components endpoint (%s)", VER);
+
 #if defined(WEBSERVER_HAS_ARDUINO)
   ESP_LOGI(TAG, "Backend: Arduino");
 #elif defined(WEBSERVER_HAS_IDF)
@@ -239,6 +238,7 @@ void WebServerListComponents::setup() {
 #else
   ESP_LOGI(TAG, "Backend: unknown");
 #endif
+
   auto *ws = esphome::web_server_base::global_web_server_base;
   if (!ws) {
     ESP_LOGE(TAG, "Web server not available; cannot register /components");
@@ -255,18 +255,22 @@ void WebServerListComponents::setup() {
     handler->setMethod(HTTP_GET);
     handler->onRequest([](AsyncWebServerRequest *request) {
       ESP_LOGD(TAG, "handle_request /components (Arduino)");
-      ArduinoJson::JsonDocument doc;  // ArduinoJson v8
+
+      ArduinoJson::JsonDocument doc;
       auto root = doc.to<ArduinoJson::JsonObject>();
       auto arr = root["components"].to<ArduinoJson::JsonArray>();
+
       ListComponentsJsonIterator it(arr);
       it.begin();
       while (it.get_state() != ListComponentsJsonIterator::State::NONE) {
         it.advance();
       }
+
       String json;
       ArduinoJson::serializeJson(doc, json);
       request->send(200, "application/json", json);
     });
+
     ws->add_handler(handler);
     ESP_LOGI(TAG, "Registered /components endpoint (Arduino)");
   }
@@ -275,7 +279,9 @@ void WebServerListComponents::setup() {
 #endif
 }
 
-void WebServerListComponents::dump_config() { ESP_LOGI(TAG, "Component loaded. Route: /components"); }
+void WebServerListComponents::dump_config() {
+  ESP_LOGI(TAG, "Component loaded. Route: /components");
+}
 
 }  // namespace webserver_listcomponents
 }  // namespace esphome
