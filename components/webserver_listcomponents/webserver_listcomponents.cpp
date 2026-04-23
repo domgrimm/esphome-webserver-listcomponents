@@ -79,9 +79,8 @@
 #ifdef USE_TEXT
 #include "esphome/components/text/text.h"
 #endif
-#ifdef USE_SPEAKER
-#include "esphome/components/speaker/speaker.h"
-#endif
+// Removed: USE_SPEAKER
+
 #ifdef USE_MICRO_WAKE_WORD
 #include "esphome/components/micro_wake_word/micro_wake_word.h"
 #endif
@@ -93,7 +92,7 @@ namespace esphome {
 namespace webserver_listcomponents {
 
 static const char *const TAG = "webserver_listcomponents";
-static const char *const VER = "lc-endpoint v0.3.0";
+static const char *const VER = "lc-endpoint v0.3.1";
 
 // JSON-building iterator over all components
 class ListComponentsJsonIterator : public esphome::ComponentIterator {
@@ -165,9 +164,7 @@ class ListComponentsJsonIterator : public esphome::ComponentIterator {
 #ifdef USE_TEXT
   bool on_text(text::Text *e) override { add_(e, "text"); return true; }
 #endif
-#ifdef USE_SPEAKER
-  bool on_speaker(speaker::Speaker *e) override { add_(e, "speaker"); return true; }
-#endif
+// Removed: on_speaker
 #ifdef USE_MICRO_WAKE_WORD
   bool on_micro_wake_word(micro_wake_word::MicroWakeWord *e) override { add_(e, "micro_wake_word"); return true; }
 #endif
@@ -182,11 +179,14 @@ class ListComponentsJsonIterator : public esphome::ComponentIterator {
   void add_(T *entity, const char *type) {
     auto obj = out_.add<ArduinoJson::JsonObject>();
     obj["type"] = type;
-    obj["object_id"] = entity->get_object_id();
+    
+    char object_id_buf[OBJECT_ID_MAX_LEN];
+    StringRef object_id = entity->get_object_id_to(object_id_buf);
+    
+    obj["object_id"] = object_id.c_str();
     obj["name"] = entity->get_name();
-    // ESPHome 2026.4: Add id (legacy) and name_id (new slash-based)
-    obj["id"] = std::string(type) + "-" + entity->get_object_id();
-    obj["name_id"] = std::string(type) + "/" + entity->get_object_id();
+    obj["id"] = std::string(type) + "-" + object_id.c_str();
+    obj["name_id"] = std::string(type) + "/" + object_id.c_str();
   }
 
   ArduinoJson::JsonArray &out_;
@@ -197,7 +197,8 @@ class ListComponentsJsonIterator : public esphome::ComponentIterator {
 class ListComponentsHandlerIDF : public esphome::web_server_idf::AsyncWebHandler {
  public:
   bool canHandle(esphome::web_server_idf::AsyncWebServerRequest *request) const override {
-    const auto url = request->url();
+    char url_buf[URL_BUF_SIZE];
+    const auto url = request->url_to(url_buf);
     const bool match = (url == "/components" || url == "/components/");
     ESP_LOGD(TAG, "can_handle url=%s match=%d", url.c_str(), match);
     return match;
