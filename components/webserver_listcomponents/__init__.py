@@ -1,3 +1,4 @@
+from esphome import core
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.const import CONF_ID
@@ -18,6 +19,7 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 
-    # FIX: Explicitly link the library so this component can find the headers.
-    # We use None as the version to defer to the version used by the core web_server.
-    cg.add_library("esphome/ESPAsyncWebServer-esphome", None)
+    # ESPAsyncWebServer is an Arduino-only library. The IDF backend
+    # (web_server_idf) does not use it, so only link it on Arduino.
+    if core.CORE.using_arduino:
+        cg.add_library("esphome/ESPAsyncWebServer-esphome", None)
