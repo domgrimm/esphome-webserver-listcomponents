@@ -1,5 +1,6 @@
 #include "webserver_listcomponents.h"
 #include "esphome/core/log.h"
+#include "esphome/core/version.h"
 #include "esphome/core/application.h"
 #include "esphome/core/component_iterator.h"
 #include "esphome/components/web_server_base/web_server_base.h"
@@ -205,7 +206,11 @@ class ListComponentsHandlerIDF : public esphome::web_server_idf::AsyncWebHandler
     ListComponentsJsonIterator it(arr);
     it.begin();
     while (it.get_state() != ListComponentsJsonIterator::State::NONE) {
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 8, 0)
+      it.try_advance(1);
+#else
       it.advance();
+#endif
     }
 
     std::string json;
@@ -254,7 +259,11 @@ void WebServerListComponents::setup() {
       ListComponentsJsonIterator it(arr);
       it.begin();
       while (it.get_state() != ListComponentsJsonIterator::State::NONE) {
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 8, 0)
+        it.try_advance(1);
+#else
         it.advance();
+#endif
       }
 
       String json;
