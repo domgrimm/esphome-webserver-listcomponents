@@ -79,9 +79,6 @@
 #ifdef USE_TEXT
 #include "esphome/components/text/text.h"
 #endif
-#ifdef USE_MICRO_WAKE_WORD
-#include "esphome/components/micro_wake_word/micro_wake_word.h"
-#endif
 #ifdef USE_CAMERA
 #include "esphome/components/camera/camera.h"
 #endif
@@ -90,7 +87,7 @@ namespace esphome {
 namespace webserver_listcomponents {
 
 static const char *const TAG = "webserver_listcomponents";
-static const char *const VER = "lc-endpoint v0.3.1";
+static const char *const VER = "lc-endpoint v0.3.2";
 
 class ListComponentsJsonIterator : public esphome::ComponentIterator {
  public:
@@ -163,12 +160,6 @@ class ListComponentsJsonIterator : public esphome::ComponentIterator {
 #endif
 #ifdef USE_TEXT
   bool on_text(text::Text *e) override { add_(e, "text"); return true; }
-#endif
-#ifdef USE_MICRO_WAKE_WORD
-  bool on_micro_wake_word(micro_wake_word::MicroWakeWord *e) override {
-    add_(e, "micro_wake_word");
-    return true;
-  }
 #endif
 #ifdef USE_CAMERA
   bool on_camera(camera::Camera *e) override { add_(e, "camera"); return true; }
